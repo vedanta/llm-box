@@ -1,7 +1,5 @@
 """Tests for exception hierarchy."""
 
-import pytest
-
 from llm_box.exceptions import (
     CacheError,
     ConfigError,
