@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-import pytest
-
 from llm_box.utils.hashing import (
     hash_content,
     hash_file,

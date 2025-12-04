@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-import pytest
-
 from llm_box.config.loader import load_config
 from llm_box.config.schema import LLMBoxConfig, OutputFormat, ProviderType
 
