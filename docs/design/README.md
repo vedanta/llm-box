@@ -13,6 +13,7 @@ This directory contains the technical design documentation for llm-box, an LLM-p
 | [caching.md](./caching.md) | DuckDB caching strategy and schema |
 | [distribution.md](./distribution.md) | Packaging for pip, Homebrew, and Conda |
 | [project-plan.md](./project-plan.md) | **Project plan with milestones and deliverables** |
+| [branching-strategy.md](./branching-strategy.md) | Git branching and release workflow |
 
 ## Architecture Overview
 
