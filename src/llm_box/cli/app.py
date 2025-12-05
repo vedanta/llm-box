@@ -5,6 +5,7 @@ from typing import Any
 
 import typer
 from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from llm_box import __version__
 from llm_box.cli.context import create_cache, create_context
@@ -120,12 +121,23 @@ def ls(
         )
 
         cmd = LsCommand()
-        result = cmd.execute(
-            ctx,
-            path=path,
-            all_files=all_files,
-            pattern=pattern,
-        )
+
+        # Show spinner while generating descriptions
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+            transient=True,
+        ) as progress:
+            progress.add_task(
+                description="Generating descriptions...", total=None
+            )
+            result = cmd.execute(
+                ctx,
+                path=path,
+                all_files=all_files,
+                pattern=pattern,
+            )
 
         if result.success:
             # Format output
@@ -207,22 +219,34 @@ def cat(
         )
 
         cmd = CatCommand()
-        result = cmd.execute(
-            ctx,
-            file=file,
-            brief=brief,
-            focus=focus,
-        )
+        file_name = Path(file).name
+
+        # Show spinner while generating explanation
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+            transient=True,
+        ) as progress:
+            progress.add_task(
+                description=f"Analyzing {file_name}...", total=None
+            )
+            result = cmd.execute(
+                ctx,
+                file=file,
+                brief=brief,
+                focus=focus,
+            )
 
         if result.success:
             # Get file info from metadata
-            file_name = Path(result.metadata.get("file", file)).name
+            result_file = Path(result.metadata.get("file", file)).name
             cached_note = " (cached)" if result.cached else ""
 
             # Print with title
             ctx.formatter.print_content(
                 result.data,
-                title=f"{file_name}{cached_note}",
+                title=f"{result_file}{cached_note}",
                 cached=result.cached,
             )
         else:
