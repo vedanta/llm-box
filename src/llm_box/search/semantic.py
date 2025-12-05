@@ -169,19 +169,21 @@ class SemanticSearch:
             similarity = self.cosine_similarity(query_embedding, chunk_embedding)
 
             if similarity >= self.min_score:
-                results.append(SemanticResult(
-                    file_path=chunk.get("file_path", ""),
-                    filename=chunk.get("filename", ""),
-                    chunk_index=chunk.get("chunk_index", 0),
-                    chunk_text=chunk.get("chunk_text", ""),
-                    similarity_score=similarity,
-                    start_line=chunk.get("start_line"),
-                    end_line=chunk.get("end_line"),
-                ))
+                results.append(
+                    SemanticResult(
+                        file_path=chunk.get("file_path", ""),
+                        filename=chunk.get("filename", ""),
+                        chunk_index=chunk.get("chunk_index", 0),
+                        chunk_text=chunk.get("chunk_text", ""),
+                        similarity_score=similarity,
+                        start_line=chunk.get("start_line"),
+                        end_line=chunk.get("end_line"),
+                    )
+                )
 
         # Sort by similarity descending
         results.sort(key=lambda r: r.similarity_score, reverse=True)
-        return results[:self.max_results]
+        return results[: self.max_results]
 
     def search_files(
         self,
@@ -214,7 +216,7 @@ class SemanticSearch:
         # Sort by score
         results = list(file_results.values())
         results.sort(key=lambda r: r.similarity_score, reverse=True)
-        return results[:self.max_results]
+        return results[: self.max_results]
 
     def rerank_results(
         self,

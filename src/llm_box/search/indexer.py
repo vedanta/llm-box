@@ -14,28 +14,93 @@ from llm_box.utils.hashing import hash_content
 
 # File extensions to skip (binary files)
 BINARY_EXTENSIONS = {
-    ".exe", ".dll", ".so", ".dylib", ".bin", ".dat",
-    ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".webp", ".svg",
-    ".mp3", ".wav", ".ogg", ".flac", ".aac", ".m4a",
-    ".mp4", ".avi", ".mkv", ".mov", ".webm", ".wmv",
-    ".zip", ".tar", ".gz", ".bz2", ".xz", ".7z", ".rar",
-    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
-    ".pyc", ".pyo", ".class", ".o", ".a", ".lib",
-    ".woff", ".woff2", ".ttf", ".otf", ".eot",
-    ".db", ".sqlite", ".sqlite3", ".duckdb",
-    ".pickle", ".pkl", ".npy", ".npz",
+    ".exe",
+    ".dll",
+    ".so",
+    ".dylib",
+    ".bin",
+    ".dat",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".bmp",
+    ".ico",
+    ".webp",
+    ".svg",
+    ".mp3",
+    ".wav",
+    ".ogg",
+    ".flac",
+    ".aac",
+    ".m4a",
+    ".mp4",
+    ".avi",
+    ".mkv",
+    ".mov",
+    ".webm",
+    ".wmv",
+    ".zip",
+    ".tar",
+    ".gz",
+    ".bz2",
+    ".xz",
+    ".7z",
+    ".rar",
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".ppt",
+    ".pptx",
+    ".pyc",
+    ".pyo",
+    ".class",
+    ".o",
+    ".a",
+    ".lib",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".otf",
+    ".eot",
+    ".db",
+    ".sqlite",
+    ".sqlite3",
+    ".duckdb",
+    ".pickle",
+    ".pkl",
+    ".npy",
+    ".npz",
 }
 
 # Directories to skip
 SKIP_DIRS = {
-    ".git", ".svn", ".hg", ".bzr",
-    "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
-    "node_modules", "bower_components",
-    ".venv", "venv", "env", ".env",
-    ".tox", ".nox",
-    "dist", "build", "*.egg-info",
-    ".idea", ".vscode",
-    "coverage", "htmlcov", ".coverage",
+    ".git",
+    ".svn",
+    ".hg",
+    ".bzr",
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    "node_modules",
+    "bower_components",
+    ".venv",
+    "venv",
+    "env",
+    ".env",
+    ".tox",
+    ".nox",
+    "dist",
+    "build",
+    "*.egg-info",
+    ".idea",
+    ".vscode",
+    "coverage",
+    "htmlcov",
+    ".coverage",
 }
 
 # Language detection by extension
@@ -187,7 +252,9 @@ class FileIndexer:
                 continue
 
             # Check hidden files
-            if ignore_hidden and any(p.startswith(".") for p in item.relative_to(path).parts):
+            if ignore_hidden and any(
+                p.startswith(".") for p in item.relative_to(path).parts
+            ):
                 continue
 
             # Check extension filter
@@ -257,7 +324,7 @@ class FileIndexer:
             # Calculate hash and extract info
             file_hash = hash_content(content)
             line_count = content.count("\n") + 1 if content else 0
-            preview = content[:self.max_preview_size] if content else None
+            preview = content[: self.max_preview_size] if content else None
             language = LANGUAGE_MAP.get(file_path.suffix.lower())
 
             return FileInfo(
@@ -333,13 +400,15 @@ class FileIndexer:
             if current_size + line_size > self.chunk_size and current_chunk:
                 # Save current chunk
                 chunk_text = "\n".join(current_chunk)
-                chunks.append(TextChunk(
-                    file_path=file_path,
-                    chunk_index=len(chunks),
-                    text=chunk_text,
-                    start_line=chunk_start_line,
-                    end_line=i - 1,
-                ))
+                chunks.append(
+                    TextChunk(
+                        file_path=file_path,
+                        chunk_index=len(chunks),
+                        text=chunk_text,
+                        start_line=chunk_start_line,
+                        end_line=i - 1,
+                    )
+                )
 
                 # Start new chunk with overlap
                 overlap_lines = self._get_overlap_lines(current_chunk)
@@ -353,13 +422,15 @@ class FileIndexer:
         # Don't forget the last chunk
         if current_chunk:
             chunk_text = "\n".join(current_chunk)
-            chunks.append(TextChunk(
-                file_path=file_path,
-                chunk_index=len(chunks),
-                text=chunk_text,
-                start_line=chunk_start_line,
-                end_line=len(lines) - 1,
-            ))
+            chunks.append(
+                TextChunk(
+                    file_path=file_path,
+                    chunk_index=len(chunks),
+                    text=chunk_text,
+                    start_line=chunk_start_line,
+                    end_line=len(lines) - 1,
+                )
+            )
 
         return chunks
 

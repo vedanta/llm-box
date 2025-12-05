@@ -24,6 +24,7 @@ from llm_box.search.semantic import SemanticSearch
 
 class SearchMode(str, Enum):
     """Search mode selection."""
+
     FUZZY = "fuzzy"
     SEMANTIC = "semantic"
     COMBINED = "combined"
@@ -203,9 +204,7 @@ class SearchEngine:
         if not file_info or file_info.is_binary:
             return False
 
-        result = self._index_file(
-            conn, file_info, force_reindex, generate_embeddings
-        )
+        result = self._index_file(conn, file_info, force_reindex, generate_embeddings)
         return result in ("indexed", "updated")
 
     def _index_file(
@@ -226,7 +225,7 @@ class SearchEngine:
         # Check if file exists and is unchanged
         existing = conn.execute(
             "SELECT id, file_hash FROM file_index WHERE file_path = ?",
-            [file_info.file_path]
+            [file_info.file_path],
         ).fetchone()
 
         if existing and not force_reindex and existing[1] == file_info.file_hash:
@@ -235,36 +234,57 @@ class SearchEngine:
         # Insert or update file index
         if existing:
             file_id = existing[0]
-            conn.execute("""
+            conn.execute(
+                """
                 UPDATE file_index SET
                     filename = ?, extension = ?, file_hash = ?,
                     size_bytes = ?, modified_at = ?, indexed_at = ?,
                     content_preview = ?, is_hidden = ?, is_binary = ?,
                     language = ?, line_count = ?
                 WHERE id = ?
-            """, [
-                file_info.filename, file_info.extension, file_info.file_hash,
-                file_info.size_bytes, file_info.modified_at, datetime.now(),
-                file_info.content_preview, file_info.is_hidden, file_info.is_binary,
-                file_info.language, file_info.line_count, file_id
-            ])
+            """,
+                [
+                    file_info.filename,
+                    file_info.extension,
+                    file_info.file_hash,
+                    file_info.size_bytes,
+                    file_info.modified_at,
+                    datetime.now(),
+                    file_info.content_preview,
+                    file_info.is_hidden,
+                    file_info.is_binary,
+                    file_info.language,
+                    file_info.line_count,
+                    file_id,
+                ],
+            )
             result = "updated"
         else:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO file_index
                 (file_path, filename, extension, file_hash, size_bytes,
                  modified_at, indexed_at, content_preview, is_hidden,
                  is_binary, language, line_count)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, [
-                file_info.file_path, file_info.filename, file_info.extension,
-                file_info.file_hash, file_info.size_bytes, file_info.modified_at,
-                datetime.now(), file_info.content_preview, file_info.is_hidden,
-                file_info.is_binary, file_info.language, file_info.line_count
-            ])
+            """,
+                [
+                    file_info.file_path,
+                    file_info.filename,
+                    file_info.extension,
+                    file_info.file_hash,
+                    file_info.size_bytes,
+                    file_info.modified_at,
+                    datetime.now(),
+                    file_info.content_preview,
+                    file_info.is_hidden,
+                    file_info.is_binary,
+                    file_info.language,
+                    file_info.line_count,
+                ],
+            )
             row = conn.execute(
-                "SELECT id FROM file_index WHERE file_path = ?",
-                [file_info.file_path]
+                "SELECT id FROM file_index WHERE file_path = ?", [file_info.file_path]
             ).fetchone()
             file_id = row[0] if row else 0
             result = "indexed"
@@ -306,24 +326,24 @@ class SearchEngine:
             return 0
 
         # Delete old embeddings
-        conn.execute(
-            "DELETE FROM embeddings WHERE file_id = ?",
-            [file_id]
-        )
+        conn.execute("DELETE FROM embeddings WHERE file_id = ?", [file_id])
 
         # Insert new embeddings
         for chunk, embedding in zip(chunks, embeddings, strict=True):
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO embeddings
                 (file_id, chunk_index, chunk_text, embedding, model)
                 VALUES (?, ?, ?, ?, ?)
-            """, [
-                file_id,
-                chunk.chunk_index,
-                chunk.text[:2000],
-                embedding,
-                self.provider.model_name if self.provider else "unknown",
-            ])
+            """,
+                [
+                    file_id,
+                    chunk.chunk_index,
+                    chunk.text[:2000],
+                    embedding,
+                    self.provider.model_name if self.provider else "unknown",
+                ],
+            )
 
         return len(chunks)
 
@@ -352,6 +372,7 @@ class SearchEngine:
             SearchResponse with results.
         """
         import time
+
         start_time = time.time()
 
         conn = self._get_connection()
@@ -441,20 +462,19 @@ class SearchEngine:
         results = []
         for fr in fuzzy_results[:top_k]:
             # Find file info
-            file_info = next(
-                (f for f in files if f["file_path"] == fr.file_path),
-                {}
-            )
+            file_info = next((f for f in files if f["file_path"] == fr.file_path), {})
 
-            results.append(SearchResult(
-                file_path=fr.file_path,
-                filename=fr.filename,
-                score=fr.score / 100.0,  # Normalize to 0-1
-                match_type="fuzzy",
-                preview=fr.context or fr.matched_text,
-                language=file_info.get("language"),
-                fuzzy_score=fr.score / 100.0,
-            ))
+            results.append(
+                SearchResult(
+                    file_path=fr.file_path,
+                    filename=fr.filename,
+                    score=fr.score / 100.0,  # Normalize to 0-1
+                    match_type="fuzzy",
+                    preview=fr.context or fr.matched_text,
+                    language=file_info.get("language"),
+                    fuzzy_score=fr.score / 100.0,
+                )
+            )
 
         return results
 
@@ -483,15 +503,17 @@ class SearchEngine:
 
         results = []
         for sr in semantic_results[:top_k]:
-            results.append(SearchResult(
-                file_path=sr.file_path,
-                filename=sr.filename,
-                score=sr.similarity_score,
-                match_type="semantic",
-                preview=sr.chunk_text[:200] if sr.chunk_text else "",
-                line_number=sr.start_line,
-                semantic_score=sr.similarity_score,
-            ))
+            results.append(
+                SearchResult(
+                    file_path=sr.file_path,
+                    filename=sr.filename,
+                    score=sr.similarity_score,
+                    match_type="semantic",
+                    preview=sr.chunk_text[:200] if sr.chunk_text else "",
+                    line_number=sr.start_line,
+                    semantic_score=sr.similarity_score,
+                )
+            )
 
         return results
 
@@ -544,9 +566,7 @@ class SearchEngine:
                     "language": None,
                     "line_number": None,
                 }
-            scores[path_key]["semantic"] = max(
-                scores[path_key]["semantic"], sr.score
-            )
+            scores[path_key]["semantic"] = max(scores[path_key]["semantic"], sr.score)
             if not scores[path_key]["preview"]:
                 scores[path_key]["preview"] = sr.preview
             if sr.line_number:
@@ -556,21 +576,23 @@ class SearchEngine:
         results = []
         for path_key, data in scores.items():
             combined_score = (
-                data["fuzzy"] * self.fuzzy_weight +
-                data["semantic"] * self.semantic_weight
+                data["fuzzy"] * self.fuzzy_weight
+                + data["semantic"] * self.semantic_weight
             )
 
-            results.append(SearchResult(
-                file_path=path_key,
-                filename=data["filename"],
-                score=combined_score,
-                match_type="combined",
-                preview=data["preview"],
-                language=data["language"],
-                line_number=data["line_number"],
-                fuzzy_score=data["fuzzy"] if data["fuzzy"] > 0 else None,
-                semantic_score=data["semantic"] if data["semantic"] > 0 else None,
-            ))
+            results.append(
+                SearchResult(
+                    file_path=path_key,
+                    filename=data["filename"],
+                    score=combined_score,
+                    match_type="combined",
+                    preview=data["preview"],
+                    language=data["language"],
+                    line_number=data["line_number"],
+                    fuzzy_score=data["fuzzy"] if data["fuzzy"] > 0 else None,
+                    semantic_score=data["semantic"] if data["semantic"] > 0 else None,
+                )
+            )
 
         # Sort by combined score
         results.sort(key=lambda r: r.score, reverse=True)
@@ -631,10 +653,13 @@ class SearchEngine:
         import contextlib
 
         with contextlib.suppress(Exception):
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO search_history (query, search_type, result_count)
                 VALUES (?, ?, ?)
-            """, [query, search_type, result_count])
+            """,
+                [query, search_type, result_count],
+            )
 
     # -------------------------------------------------------------------------
     # Utility Methods
@@ -648,14 +673,10 @@ class SearchEngine:
         """
         conn = self._get_connection()
 
-        file_row = conn.execute(
-            "SELECT COUNT(*) FROM file_index"
-        ).fetchone()
+        file_row = conn.execute("SELECT COUNT(*) FROM file_index").fetchone()
         file_count: int = file_row[0] if file_row else 0
 
-        chunk_row = conn.execute(
-            "SELECT COUNT(*) FROM embeddings"
-        ).fetchone()
+        chunk_row = conn.execute("SELECT COUNT(*) FROM embeddings").fetchone()
         chunk_count: int = chunk_row[0] if chunk_row else 0
 
         languages = conn.execute("""
