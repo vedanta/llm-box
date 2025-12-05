@@ -197,7 +197,13 @@ def create_context(
         config = get_config()
 
     # Determine provider type
-    provider_type = get_provider_type(provider, config.default_provider.value)
+    # config.default_provider may be ProviderType enum or string depending on source
+    default_provider = (
+        config.default_provider.value
+        if hasattr(config.default_provider, "value")
+        else str(config.default_provider)
+    )
+    provider_type = get_provider_type(provider, default_provider)
 
     # Create components
     llm_provider = create_provider(provider_type, model, config)
