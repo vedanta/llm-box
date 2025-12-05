@@ -1,0 +1,124 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "llm-box"
+version = "0.1.0"
+description = "LLM-powered terminal toolbox"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Vedanta Barooah" }
+]
+keywords = ["llm", "cli", "terminal", "ai", "ollama", "openai", "langchain"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+]
+
+dependencies = [
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+    "duckdb>=0.9.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "langchain-core>=0.3.0",
+    "langgraph>=0.2.0",
+    "rapidfuzz>=3.0.0",
+    "tenacity>=8.0.0",
+]
+
+[project.optional-dependencies]
+ollama = [
+    "langchain-ollama>=0.3.0",
+]
+openai = [
+    "langchain-openai>=0.2.0",
+]
+anthropic = [
+    "langchain-anthropic>=0.2.0",
+]
+all = [
+    "llm-box[ollama,openai,anthropic]",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "mypy>=1.0.0",
+    "ruff>=0.1.0",
+    "pre-commit>=3.0.0",
+]
+
+[project.scripts]
+# Primary CLI
+llm-box = "llm_box.cli.app:main"
+
+# Shortcut aliases
+llm-ls = "llm_box.cli.shortcuts:ls_main"
+llm-cat = "llm_box.cli.shortcuts:cat_main"
+llm-find = "llm_box.cli.shortcuts:find_main"
+llm-ask = "llm_box.cli.shortcuts:ask_main"
+
+[project.urls]
+Homepage = "https://github.com/vedanta/llm-box"
+Documentation = "https://github.com/vedanta/llm-box#readme"
+Repository = "https://github.com/vedanta/llm-box"
+Issues = "https://github.com/vedanta/llm-box/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/llm_box"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/README.md",
+    "/LICENSE",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-v --cov=llm_box --cov-report=term-missing"
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+ignore_missing_imports = true
+packages = ["llm_box"]
+mypy_path = "src"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
+ignore = ["E501"]  # Line length handled by formatter
+
+[tool.ruff.lint.isort]
+known-first-party = ["llm_box"]
+
+[tool.coverage.run]
+source = ["src/llm_box"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
