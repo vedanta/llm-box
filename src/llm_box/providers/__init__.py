@@ -20,7 +20,6 @@ Usage:
 import contextlib
 
 # Import providers to register them
-from llm_box.providers import mock  # noqa: F401
 from llm_box.providers.base import (
     EmbeddingResponse,
     LLMBoxProvider,
@@ -33,6 +32,7 @@ from llm_box.providers.fallback import (
     embed_with_fallback,
     invoke_with_fallback,
 )
+from llm_box.providers.mock import MockProvider
 from llm_box.providers.registry import ProviderRegistry
 
 # Optional providers - import only if dependencies are available
@@ -53,6 +53,8 @@ __all__ = [
     "ProviderType",
     # Registry
     "ProviderRegistry",
+    # Providers
+    "MockProvider",
     # Fallback
     "FallbackProvider",
     "invoke_with_fallback",
