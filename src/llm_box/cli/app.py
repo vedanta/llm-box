@@ -18,7 +18,13 @@ from llm_box.cli.options import (
 )
 
 # Import commands to ensure they're registered
-from llm_box.commands import CatCommand, CommandRegistry, LsCommand  # noqa: F401
+from llm_box.commands import (  # noqa: F401
+    CatCommand,
+    CommandRegistry,
+    FindCommand,
+    IndexCommand,
+    LsCommand,
+)
 from llm_box.config import get_config
 
 # Create Typer app
@@ -264,12 +270,185 @@ def cat(
 def find(
     query: str = typer.Argument(..., help="Search query."),
     path: str = typer.Option(".", "--path", "-p", help="Directory to search."),
-    mode: str = typer.Option("combined", "--mode", "-m", help="Search mode."),
+    mode: str = typer.Option("combined", "--mode", "-m", help="Search mode (fuzzy, semantic, combined)."),
     top: int = typer.Option(10, "--top", "-n", help="Number of results."),
+    do_index: bool = typer.Option(False, "--index", "-i", help="Index directory before searching."),
+    extensions: str | None = typer.Option(None, "--ext", "-e", help="Filter by extensions (comma-separated, e.g. '.py,.js')."),
+    provider: ProviderOption = None,
+    model: ModelOption = None,
+    verbose: VerboseOption = False,
 ) -> None:
     """Search files using semantic and fuzzy matching."""
-    console.print(f"[dim]find command not yet implemented (query: {query})[/dim]")
-    console.print("[dim]Coming in Milestone 7 (Search System)[/dim]")
+    try:
+        ctx = create_context(
+            provider=provider,
+            model=model,
+            no_cache=True,  # Don't cache search results
+            verbose=verbose,
+        )
+
+        cmd = FindCommand()
+
+        # Parse extensions
+        ext_list = None
+        if extensions:
+            ext_list = [e.strip() for e in extensions.split(",")]
+            ext_list = [e if e.startswith(".") else f".{e}" for e in ext_list]
+
+        # Show spinner while searching
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+            transient=True,
+        ) as progress:
+            task_desc = "Indexing and searching..." if do_index else "Searching..."
+            progress.add_task(description=task_desc, total=None)
+            result = cmd.execute(
+                ctx,
+                query=query,
+                path=path,
+                mode=mode,
+                top_k=top,
+                extensions=ext_list,
+                index=do_index,
+            )
+
+        if result.success:
+            _print_find_output(result.data, verbose)
+        else:
+            err_console.print(f"[red]Error:[/red] {result.error}")
+            raise typer.Exit(1)
+
+    except typer.Exit:
+        raise
+    except Exception as e:
+        err_console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1) from None
+
+
+def _print_find_output(data: dict[str, Any], verbose: bool) -> None:
+    """Print find command output."""
+    results = data.get("results", [])
+    count = data.get("count", 0)
+    search_time = data.get("search_time_ms", 0)
+    mode = data.get("mode", "combined")
+
+    if count == 0:
+        console.print("[dim]No results found[/dim]")
+        return
+
+    console.print(f"[bold]Search results[/bold] ({mode} mode)\n")
+
+    for r in results:
+        score = r.get("score", 0)
+        filename = r.get("filename", "")
+        file_path = r.get("file_path", "")
+        preview = r.get("preview", "")[:100]
+        match_type = r.get("match_type", "")
+        language = r.get("language", "")
+
+        # Score indicator
+        if score >= 0.8:
+            score_color = "green"
+        elif score >= 0.5:
+            score_color = "yellow"
+        else:
+            score_color = "dim"
+
+        console.print(f"  [{score_color}]{score:.2f}[/{score_color}] [cyan]{filename}[/cyan]")
+
+        if verbose:
+            console.print(f"       Path: {file_path}")
+            console.print(f"       Type: {match_type} | Language: {language or 'unknown'}")
+            if r.get("fuzzy_score"):
+                console.print(f"       Fuzzy: {r['fuzzy_score']:.2f}")
+            if r.get("semantic_score"):
+                console.print(f"       Semantic: {r['semantic_score']:.2f}")
+
+        if preview:
+            # Truncate and clean preview
+            preview_clean = preview.replace("\n", " ").strip()
+            if len(preview_clean) > 80:
+                preview_clean = preview_clean[:77] + "..."
+            console.print(f"       [dim]{preview_clean}[/dim]")
+
+        console.print()
+
+    console.print(f"[dim]Found {count} results in {search_time:.1f}ms[/dim]")
+
+    # Show index stats if available
+    index_stats = data.get("index_stats")
+    if index_stats and index_stats.get("files_indexed", 0) > 0:
+        console.print(f"[dim]Indexed {index_stats['files_indexed']} new files[/dim]")
+
+
+@app.command()
+def index(
+    path: str = typer.Argument(".", help="Directory to index."),
+    extensions: str | None = typer.Option(None, "--ext", "-e", help="Filter by extensions (comma-separated)."),
+    force: bool = typer.Option(False, "--force", "-f", help="Force re-index all files."),
+    no_embeddings: bool = typer.Option(False, "--no-embeddings", help="Skip embedding generation."),
+    provider: ProviderOption = None,
+    model: ModelOption = None,
+    verbose: VerboseOption = False,
+) -> None:
+    """Index files for search."""
+    try:
+        ctx = create_context(
+            provider=provider,
+            model=model,
+            no_cache=True,
+            verbose=verbose,
+        )
+
+        cmd = IndexCommand()
+
+        # Parse extensions
+        ext_list = None
+        if extensions:
+            ext_list = [e.strip() for e in extensions.split(",")]
+            ext_list = [e if e.startswith(".") else f".{e}" for e in ext_list]
+
+        # Show spinner while indexing
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+            transient=True,
+        ) as progress:
+            progress.add_task(description="Indexing files...", total=None)
+            result = cmd.execute(
+                ctx,
+                path=path,
+                extensions=ext_list,
+                force=force,
+                no_embeddings=no_embeddings,
+            )
+
+        if result.success:
+            data = result.data
+            console.print("[bold]Indexing complete[/bold]\n")
+            console.print(f"  Path: {data.get('path', path)}")
+            console.print(f"  Files indexed: {data.get('files_indexed', 0)}")
+            console.print(f"  Files updated: {data.get('files_updated', 0)}")
+            console.print(f"  Files unchanged: {data.get('files_unchanged', 0)}")
+            console.print(f"  Files skipped: {data.get('files_skipped', 0)}")
+
+            if data.get("errors", 0) > 0:
+                console.print(f"  [yellow]Errors: {data['errors']}[/yellow]")
+                if verbose and data.get("error_details"):
+                    for file_path, error in data["error_details"][:5]:
+                        console.print(f"    [dim]{file_path}: {error}[/dim]")
+        else:
+            err_console.print(f"[red]Error:[/red] {result.error}")
+            raise typer.Exit(1)
+
+    except typer.Exit:
+        raise
+    except Exception as e:
+        err_console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1) from None
 
 
 # Cache subcommand group

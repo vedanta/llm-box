@@ -28,11 +28,12 @@ Usage:
 """
 
 from llm_box.commands.base import BaseCommand, CommandContext, CommandResult
-from llm_box.commands.registry import CommandRegistry, command
 
 # Import commands to trigger registration
 from llm_box.commands.cat import CatCommand
+from llm_box.commands.find import FindCommand, IndexCommand
 from llm_box.commands.ls import LsCommand
+from llm_box.commands.registry import CommandRegistry, command
 
 __all__ = [
     # Base classes
@@ -44,5 +45,7 @@ __all__ = [
     "command",
     # Commands
     "CatCommand",
+    "FindCommand",
+    "IndexCommand",
     "LsCommand",
 ]
