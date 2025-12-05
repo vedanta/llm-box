@@ -45,8 +45,8 @@ class OllamaProvider(LLMBoxProvider):
         self._extra_kwargs = kwargs
 
         # Lazy initialization of LangChain models
-        self._chat_model = None
-        self._embeddings_model = None
+        self._chat_model: Any = None
+        self._embeddings_model: Any = None
 
     def _get_chat_model(self) -> Any:
         """Lazily initialize and return the chat model."""
@@ -62,7 +62,6 @@ class OllamaProvider(LLMBoxProvider):
             self._chat_model = ChatOllama(
                 model=self.model_name,
                 base_url=self._base_url,
-                timeout=self._timeout,
                 **self._extra_kwargs,
             )
         return self._chat_model

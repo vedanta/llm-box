@@ -10,6 +10,7 @@ from typing import Any
 
 try:
     from rapidfuzz import fuzz
+
     RAPIDFUZZ_AVAILABLE = True
 except ImportError:
     RAPIDFUZZ_AVAILABLE = False
@@ -17,6 +18,7 @@ except ImportError:
 
 class MatchType(str, Enum):
     """Type of fuzzy match."""
+
     FILENAME = "filename"
     PATH = "path"
     CONTENT = "content"
@@ -81,37 +83,38 @@ class FuzzySearch:
             file_path = file_record.get("file_path", "")
 
             # Score against filename
-            filename_score = fuzz.partial_ratio(
-                query.lower(), filename.lower()
-            )
+            filename_score = fuzz.partial_ratio(query.lower(), filename.lower())
 
             if filename_score >= self.min_score:
-                results.append(FuzzyResult(
-                    file_path=file_path,
-                    filename=filename,
-                    match_type=MatchType.FILENAME,
-                    matched_text=filename,
-                    score=filename_score,
-                ))
+                results.append(
+                    FuzzyResult(
+                        file_path=file_path,
+                        filename=filename,
+                        match_type=MatchType.FILENAME,
+                        matched_text=filename,
+                        score=filename_score,
+                    )
+                )
                 continue
 
             # Also try path matching for lower-scored filename matches
-            path_score = fuzz.partial_ratio(
-                query.lower(), file_path.lower()
-            )
+            path_score = fuzz.partial_ratio(query.lower(), file_path.lower())
 
             if path_score >= self.min_score:
-                results.append(FuzzyResult(
-                    file_path=file_path,
-                    filename=filename,
-                    match_type=MatchType.PATH,
-                    matched_text=file_path,
-                    score=path_score * 0.9,  # Slightly lower weight for path matches
-                ))
+                results.append(
+                    FuzzyResult(
+                        file_path=file_path,
+                        filename=filename,
+                        match_type=MatchType.PATH,
+                        matched_text=file_path,
+                        score=path_score
+                        * 0.9,  # Slightly lower weight for path matches
+                    )
+                )
 
         # Sort by score descending
         results.sort(key=lambda r: r.score, reverse=True)
-        return results[:self.max_results]
+        return results[: self.max_results]
 
     def search_content(
         self,
@@ -141,28 +144,26 @@ class FuzzySearch:
             file_path = file_record.get("file_path", "")
 
             # Score against content
-            content_score = fuzz.partial_ratio(
-                query.lower(), content.lower()
-            )
+            content_score = fuzz.partial_ratio(query.lower(), content.lower())
 
             if content_score >= self.min_score:
                 # Extract context around the match
-                context = self._extract_context(
-                    content, query, context_chars
-                )
+                context = self._extract_context(content, query, context_chars)
 
-                results.append(FuzzyResult(
-                    file_path=file_path,
-                    filename=filename,
-                    match_type=MatchType.CONTENT,
-                    matched_text=query,
-                    score=content_score * 0.85,  # Weight content slightly lower
-                    context=context,
-                ))
+                results.append(
+                    FuzzyResult(
+                        file_path=file_path,
+                        filename=filename,
+                        match_type=MatchType.CONTENT,
+                        matched_text=query,
+                        score=content_score * 0.85,  # Weight content slightly lower
+                        context=context,
+                    )
+                )
 
         # Sort by score descending
         results.sort(key=lambda r: r.score, reverse=True)
-        return results[:self.max_results]
+        return results[: self.max_results]
 
     def search_combined(
         self,
@@ -193,7 +194,7 @@ class FuzzySearch:
         # Sort by score
         results = list(seen_paths.values())
         results.sort(key=lambda r: r.score, reverse=True)
-        return results[:self.max_results]
+        return results[: self.max_results]
 
     def _extract_context(
         self,
@@ -222,7 +223,7 @@ class FuzzySearch:
         # Slide a window and find best match position
         window_size = len(query) + 10
         for i in range(len(content) - min(window_size, len(content))):
-            window = content_lower[i:i + window_size]
+            window = content_lower[i : i + window_size]
             score = fuzz.partial_ratio(query_lower, window)
             if score > best_score:
                 best_score = score
@@ -230,7 +231,7 @@ class FuzzySearch:
 
         if best_pos == -1:
             # Fallback to beginning
-            return content[:context_chars * 2] + "..."
+            return content[: context_chars * 2] + "..."
 
         # Extract context
         start = max(0, best_pos - context_chars)
@@ -268,7 +269,9 @@ class FuzzySearch:
                 result.score *= boost_filename
 
             # Boost specific extension
-            if boost_extension_match and result.file_path.endswith(boost_extension_match):
+            if boost_extension_match and result.file_path.endswith(
+                boost_extension_match
+            ):
                 result.score *= 1.1
 
             # Cap at 100

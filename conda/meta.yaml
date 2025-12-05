@@ -1,0 +1,66 @@
+{% set name = "llm-box" %}
+{% set version = "0.1.0" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+  sha256: PLACEHOLDER_SHA256
+  # For local development:
+  # path: ..
+
+build:
+  number: 0
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv
+  entry_points:
+    - llm-box = llm_box.cli.app:main
+    - llm-ls = llm_box.cli.shortcuts:ls_main
+    - llm-cat = llm_box.cli.shortcuts:cat_main
+    - llm-find = llm_box.cli.shortcuts:find_main
+
+requirements:
+  host:
+    - python >=3.10
+    - pip
+    - hatchling
+  run:
+    - python >=3.10
+    - typer >=0.9.0
+    - rich >=13.0.0
+    - duckdb >=0.9.0
+    - pydantic >=2.0.0
+    - pydantic-settings >=2.0.0
+    - langchain-core >=0.3.0
+    - langgraph >=0.2.0
+    - rapidfuzz >=3.0.0
+    - tenacity >=8.0.0
+
+test:
+  imports:
+    - llm_box
+    - llm_box.cli
+    - llm_box.commands
+    - llm_box.providers
+  commands:
+    - llm-box --version
+    - llm-box --help
+
+about:
+  home: https://github.com/vedanta/llm-box
+  license: MIT
+  license_family: MIT
+  license_file: LICENSE
+  summary: LLM-powered terminal toolbox
+  description: |
+    llm-box is a collection of LLM-powered command-line tools that enhance
+    your terminal experience. It provides intelligent file descriptions,
+    code explanations, semantic search, and more.
+  doc_url: https://github.com/vedanta/llm-box#readme
+  dev_url: https://github.com/vedanta/llm-box
+
+extra:
+  recipe-maintainers:
+    - vedanta

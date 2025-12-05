@@ -135,9 +135,7 @@ def ls(
             console=console,
             transient=True,
         ) as progress:
-            progress.add_task(
-                description="Generating descriptions...", total=None
-            )
+            progress.add_task(description="Generating descriptions...", total=None)
             result = cmd.execute(
                 ctx,
                 path=path,
@@ -234,9 +232,7 @@ def cat(
             console=console,
             transient=True,
         ) as progress:
-            progress.add_task(
-                description=f"Analyzing {file_name}...", total=None
-            )
+            progress.add_task(description=f"Analyzing {file_name}...", total=None)
             result = cmd.execute(
                 ctx,
                 file=file,
@@ -270,10 +266,19 @@ def cat(
 def find(
     query: str = typer.Argument(..., help="Search query."),
     path: str = typer.Option(".", "--path", "-p", help="Directory to search."),
-    mode: str = typer.Option("combined", "--mode", "-m", help="Search mode (fuzzy, semantic, combined)."),
+    mode: str = typer.Option(
+        "combined", "--mode", "-m", help="Search mode (fuzzy, semantic, combined)."
+    ),
     top: int = typer.Option(10, "--top", "-n", help="Number of results."),
-    do_index: bool = typer.Option(False, "--index", "-i", help="Index directory before searching."),
-    extensions: str | None = typer.Option(None, "--ext", "-e", help="Filter by extensions (comma-separated, e.g. '.py,.js')."),
+    do_index: bool = typer.Option(
+        False, "--index", "-i", help="Index directory before searching."
+    ),
+    extensions: str | None = typer.Option(
+        None,
+        "--ext",
+        "-e",
+        help="Filter by extensions (comma-separated, e.g. '.py,.js').",
+    ),
     provider: ProviderOption = None,
     model: ModelOption = None,
     verbose: VerboseOption = False,
@@ -356,11 +361,15 @@ def _print_find_output(data: dict[str, Any], verbose: bool) -> None:
         else:
             score_color = "dim"
 
-        console.print(f"  [{score_color}]{score:.2f}[/{score_color}] [cyan]{filename}[/cyan]")
+        console.print(
+            f"  [{score_color}]{score:.2f}[/{score_color}] [cyan]{filename}[/cyan]"
+        )
 
         if verbose:
             console.print(f"       Path: {file_path}")
-            console.print(f"       Type: {match_type} | Language: {language or 'unknown'}")
+            console.print(
+                f"       Type: {match_type} | Language: {language or 'unknown'}"
+            )
             if r.get("fuzzy_score"):
                 console.print(f"       Fuzzy: {r['fuzzy_score']:.2f}")
             if r.get("semantic_score"):
@@ -386,9 +395,15 @@ def _print_find_output(data: dict[str, Any], verbose: bool) -> None:
 @app.command()
 def index(
     path: str = typer.Argument(".", help="Directory to index."),
-    extensions: str | None = typer.Option(None, "--ext", "-e", help="Filter by extensions (comma-separated)."),
-    force: bool = typer.Option(False, "--force", "-f", help="Force re-index all files."),
-    no_embeddings: bool = typer.Option(False, "--no-embeddings", help="Skip embedding generation."),
+    extensions: str | None = typer.Option(
+        None, "--ext", "-e", help="Filter by extensions (comma-separated)."
+    ),
+    force: bool = typer.Option(
+        False, "--force", "-f", help="Force re-index all files."
+    ),
+    no_embeddings: bool = typer.Option(
+        False, "--no-embeddings", help="Skip embedding generation."
+    ),
     provider: ProviderOption = None,
     model: ModelOption = None,
     verbose: VerboseOption = False,

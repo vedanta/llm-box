@@ -119,17 +119,23 @@ class FindCommand(BaseCommand):
             # Build result data
             results_data = []
             for result in response.results:
-                results_data.append({
-                    "file_path": result.file_path,
-                    "filename": result.filename,
-                    "score": round(result.score, 3),
-                    "match_type": result.match_type,
-                    "preview": result.preview[:200] if result.preview else "",
-                    "language": result.language,
-                    "line_number": result.line_number,
-                    "fuzzy_score": round(result.fuzzy_score, 3) if result.fuzzy_score else None,
-                    "semantic_score": round(result.semantic_score, 3) if result.semantic_score else None,
-                })
+                results_data.append(
+                    {
+                        "file_path": result.file_path,
+                        "filename": result.filename,
+                        "score": round(result.score, 3),
+                        "match_type": result.match_type,
+                        "preview": result.preview[:200] if result.preview else "",
+                        "language": result.language,
+                        "line_number": result.line_number,
+                        "fuzzy_score": round(result.fuzzy_score, 3)
+                        if result.fuzzy_score
+                        else None,
+                        "semantic_score": round(result.semantic_score, 3)
+                        if result.semantic_score
+                        else None,
+                    }
+                )
 
             return CommandResult.ok(
                 data={
@@ -140,9 +146,15 @@ class FindCommand(BaseCommand):
                     "total_files_searched": response.total_files_searched,
                     "search_time_ms": round(response.search_time_ms, 2),
                     "index_stats": {
-                        "files_indexed": index_stats.files_indexed if index_stats else 0,
-                        "files_updated": index_stats.files_updated if index_stats else 0,
-                    } if index_stats else None,
+                        "files_indexed": index_stats.files_indexed
+                        if index_stats
+                        else 0,
+                        "files_updated": index_stats.files_updated
+                        if index_stats
+                        else 0,
+                    }
+                    if index_stats
+                    else None,
                 }
             )
 
@@ -226,7 +238,9 @@ class IndexCommand(BaseCommand):
                     "files_unchanged": stats.files_unchanged,
                     "files_skipped": stats.files_skipped,
                     "errors": stats.errors,
-                    "error_details": stats.error_details[:10] if stats.error_details else [],
+                    "error_details": stats.error_details[:10]
+                    if stats.error_details
+                    else [],
                 }
             )
 

@@ -89,10 +89,12 @@ class TestFileIndexer:
             Path(tmpdir, "test.js").write_text("console.log('hi')")
 
             indexer = FileIndexer()
-            files = list(indexer.crawl_directory(
-                Path(tmpdir),
-                extensions=[".py"],
-            ))
+            files = list(
+                indexer.crawl_directory(
+                    Path(tmpdir),
+                    extensions=[".py"],
+                )
+            )
 
             assert len(files) == 1
             assert files[0].filename == "test.py"
