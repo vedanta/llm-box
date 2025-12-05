@@ -30,6 +30,10 @@ Usage:
 from llm_box.commands.base import BaseCommand, CommandContext, CommandResult
 from llm_box.commands.registry import CommandRegistry, command
 
+# Import commands to trigger registration
+from llm_box.commands.cat import CatCommand
+from llm_box.commands.ls import LsCommand
+
 __all__ = [
     # Base classes
     "BaseCommand",
@@ -38,4 +42,7 @@ __all__ = [
     # Registry
     "CommandRegistry",
     "command",
+    # Commands
+    "CatCommand",
+    "LsCommand",
 ]

@@ -1,11 +1,25 @@
 """Main CLI application for llm-box."""
 
+from pathlib import Path
+from typing import Any
+
 import typer
 from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from llm_box import __version__
+from llm_box.cli.context import create_cache, create_context
+from llm_box.cli.options import (
+    FormatOption,
+    ModelOption,
+    NoCacheOption,
+    ProviderOption,
+    VerboseOption,
+)
+
+# Import commands to ensure they're registered
+from llm_box.commands import CatCommand, CommandRegistry, LsCommand  # noqa: F401
 from llm_box.config import get_config
-from llm_box.utils.logging import setup_logging
 
 # Create Typer app
 app = typer.Typer(
@@ -37,22 +51,9 @@ def main_callback(
         is_eager=True,
         help="Show version and exit.",
     ),
-    verbose: bool = typer.Option(
-        False,
-        "--verbose",
-        "-v",
-        help="Enable verbose output.",
-    ),
 ) -> None:
     """LLM-powered terminal toolbox."""
-    # Setup logging based on verbosity
-    config = get_config()
-    level = "DEBUG" if verbose else config.logging.level
-    setup_logging(
-        level=level,
-        log_file=config.logging.file,
-        json_format=config.logging.json_format,
-    )
+    pass
 
 
 @app.command()
@@ -90,29 +91,173 @@ def config_cmd(
         f"  Anthropic: {'enabled' if config.providers.anthropic.enabled else 'disabled'}"
     )
 
+    # Registered commands
+    console.print("\n[bold]Registered Commands:[/bold]")
+    for info in CommandRegistry.get_command_info():
+        aliases = f" ({info['aliases']})" if info["aliases"] else ""
+        console.print(f"  {info['name']}{aliases}: {info['description']}")
 
-# Placeholder commands - to be implemented in later milestones
+
 @app.command()
 def ls(
     path: str = typer.Argument(".", help="Directory to list."),
     all_files: bool = typer.Option(False, "--all", "-a", help="Include hidden files."),
-    format: str | None = typer.Option(None, "--format", "-f", help="Output format."),
-    no_cache: bool = typer.Option(False, "--no-cache", help="Bypass cache."),
+    pattern: str | None = typer.Option(None, "--pattern", "-g", help="Glob pattern."),
+    format: FormatOption = None,
+    provider: ProviderOption = None,
+    model: ModelOption = None,
+    no_cache: NoCacheOption = False,
+    verbose: VerboseOption = False,
 ) -> None:
     """List files with LLM-generated descriptions."""
-    console.print(f"[dim]ls command not yet implemented (path: {path})[/dim]")
-    console.print("[dim]Coming in Milestone 5[/dim]")
+    try:
+        ctx = create_context(
+            provider=provider,
+            model=model,
+            format_choice=format,
+            no_cache=no_cache,
+            verbose=verbose,
+            working_dir=Path(path).resolve().parent,
+        )
+
+        cmd = LsCommand()
+
+        # Show spinner while generating descriptions
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+            transient=True,
+        ) as progress:
+            progress.add_task(
+                description="Generating descriptions...", total=None
+            )
+            result = cmd.execute(
+                ctx,
+                path=path,
+                all_files=all_files,
+                pattern=pattern,
+            )
+
+        if result.success:
+            # Format output
+            data = result.data
+            if isinstance(data, dict) and "files" in data:
+                _print_ls_output(data, ctx.formatter, verbose)
+            else:
+                ctx.formatter.print_content(str(data), cached=result.cached)
+        else:
+            err_console.print(f"[red]Error:[/red] {result.error}")
+            raise typer.Exit(1)
+
+    except typer.Exit:
+        raise
+    except Exception as e:
+        err_console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1) from None
+
+
+def _print_ls_output(data: dict[str, Any], formatter: Any, verbose: bool) -> None:
+    """Print ls command output in a formatted way."""
+    files = data.get("files", [])
+    count = data.get("count", 0)
+
+    if count == 0:
+        console.print("[dim]No files found[/dim]")
+        return
+
+    # Print as a table
+    rows = []
+    for f in files:
+        file_type = f.get("type", "file")
+        name = f.get("name", "")
+        desc = f.get("description", "")
+
+        # Add type indicator
+        if file_type == "directory":
+            type_icon = "📁"
+        elif file_type in ("Python", "JavaScript", "TypeScript", "Go", "Rust"):
+            type_icon = "📄"
+        else:
+            type_icon = "📃"
+
+        cached_marker = " [dim](cached)[/dim]" if f.get("cached") and verbose else ""
+
+        rows.append(
+            {
+                "": type_icon,
+                "Name": name,
+                "Description": desc + cached_marker,
+            }
+        )
+
+    formatted = formatter.format_table(rows, columns=["", "Name", "Description"])
+    console.print(formatted)
+    console.print(f"\n[dim]{count} items[/dim]")
 
 
 @app.command()
 def cat(
-    file: str = typer.Argument(..., help="File to summarize."),
-    format: str | None = typer.Option(None, "--format", "-f", help="Output format."),
-    no_cache: bool = typer.Option(False, "--no-cache", help="Bypass cache."),
+    file: str = typer.Argument(..., help="File to explain."),
+    brief: bool = typer.Option(False, "--brief", "-b", help="Brief summary only."),
+    focus: str | None = typer.Option(None, "--focus", help="Focus on specific aspect."),
+    format: FormatOption = None,
+    provider: ProviderOption = None,
+    model: ModelOption = None,
+    no_cache: NoCacheOption = False,
+    verbose: VerboseOption = False,
 ) -> None:
-    """Summarize file contents using LLM."""
-    console.print(f"[dim]cat command not yet implemented (file: {file})[/dim]")
-    console.print("[dim]Coming in Milestone 5[/dim]")
+    """Explain file contents using LLM."""
+    try:
+        ctx = create_context(
+            provider=provider,
+            model=model,
+            format_choice=format,
+            no_cache=no_cache,
+            verbose=verbose,
+            working_dir=Path(file).resolve().parent,
+        )
+
+        cmd = CatCommand()
+        file_name = Path(file).name
+
+        # Show spinner while generating explanation
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+            transient=True,
+        ) as progress:
+            progress.add_task(
+                description=f"Analyzing {file_name}...", total=None
+            )
+            result = cmd.execute(
+                ctx,
+                file=file,
+                brief=brief,
+                focus=focus,
+            )
+
+        if result.success:
+            # Get file info from metadata
+            result_file = Path(result.metadata.get("file", file)).name
+            cached_note = " (cached)" if result.cached else ""
+
+            # Print with title
+            ctx.formatter.print_content(
+                result.data,
+                title=f"{result_file}{cached_note}",
+                cached=result.cached,
+            )
+        else:
+            err_console.print(f"[red]Error:[/red] {result.error}")
+            raise typer.Exit(1)
+
+    except typer.Exit:
+        raise
+    except Exception as e:
+        err_console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1) from None
 
 
 @app.command()
@@ -124,7 +269,7 @@ def find(
 ) -> None:
     """Search files using semantic and fuzzy matching."""
     console.print(f"[dim]find command not yet implemented (query: {query})[/dim]")
-    console.print("[dim]Coming in Milestone 6[/dim]")
+    console.print("[dim]Coming in Milestone 7 (Search System)[/dim]")
 
 
 # Cache subcommand group
@@ -135,19 +280,74 @@ app.add_typer(cache_app, name="cache")
 @cache_app.command("stats")
 def cache_stats() -> None:
     """Show cache statistics."""
-    console.print("[dim]cache stats not yet implemented[/dim]")
-    console.print("[dim]Coming in Milestone 3[/dim]")
+    config = get_config()
+    cache = create_cache(config)
+
+    stats = cache.stats()
+
+    console.print("[bold]Cache Statistics[/bold]\n")
+    console.print(f"Enabled: {stats.get('enabled', config.cache.enabled)}")
+    console.print(f"Total entries: {cache.count()}")
+    console.print(f"Cache hits: {stats.get('hits', 0)}")
+    console.print(f"Cache misses: {stats.get('misses', 0)}")
+
+    hit_rate = stats.get("hit_rate")
+    if hit_rate is not None:
+        console.print(f"Hit rate: {hit_rate:.1%}")
 
 
 @cache_app.command("clear")
 def cache_clear(
-    command: str | None = typer.Option(
+    command_name: str | None = typer.Option(
         None, "--command", "-c", help="Clear specific command cache."
     ),
+    force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation."),
 ) -> None:
     """Clear cache entries."""
-    console.print("[dim]cache clear not yet implemented[/dim]")
-    console.print("[dim]Coming in Milestone 3[/dim]")
+    config = get_config()
+    cache = create_cache(config)
+
+    if not force:
+        if command_name:
+            msg = f"Clear cache for command '{command_name}'?"
+        else:
+            msg = "Clear all cache entries?"
+
+        confirm = typer.confirm(msg)
+        if not confirm:
+            console.print("[dim]Cancelled[/dim]")
+            return
+
+    # Note: command-specific clearing would need DuckDBCache method
+    # For now, clear all entries
+    if command_name:
+        console.print(
+            f"[dim]Filtering by command '{command_name}' not yet implemented[/dim]"
+        )
+    cleared = cache.clear()
+    console.print(f"Cleared {cleared} cache entries")
+
+
+@app.command()
+def commands() -> None:
+    """List all available commands."""
+    info_list = CommandRegistry.get_command_info()
+
+    if not info_list:
+        console.print("[dim]No commands registered[/dim]")
+        return
+
+    console.print("[bold]Available Commands[/bold]\n")
+    for info in info_list:
+        name = info["name"]
+        desc = info["description"]
+        aliases = info["aliases"]
+
+        console.print(f"  [cyan]{name}[/cyan]")
+        if aliases:
+            console.print(f"    Aliases: {aliases}")
+        console.print(f"    {desc}")
+        console.print()
 
 
 def main() -> None:
