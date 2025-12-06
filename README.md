@@ -1,6 +1,21 @@
 # llm-box
 
-**LLM-powered terminal toolbox** — AI-enhanced versions of `ls`, `cat`, `find`, and more.
+<p align="center">
+  <img src="art/ai-cli-big-boy.png" alt="llm-box" width="400">
+</p>
+
+<p align="center">
+  <strong>LLM-powered terminal toolbox</strong> — AI-enhanced versions of <code>ls</code>, <code>cat</code>, <code>find</code>, and more.
+</p>
+
+<p align="center">
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#installation">Installation</a> •
+  <a href="#commands">Commands</a> •
+  <a href="#configuration">Configuration</a>
+</p>
+
+---
 
 llm-box brings the power of large language models to your command line. Instead of just listing files, it **describes what they do**. Instead of dumping file contents, it **explains them**. Instead of searching by filename, it **understands what you're looking for**.
 
