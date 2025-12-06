@@ -19,11 +19,15 @@ from llm_box.cli.options import (
 
 # Import commands to ensure they're registered
 from llm_box.commands import (  # noqa: F401
+    AskCommand,
     CatCommand,
     CommandRegistry,
+    DocCommand,
     FindCommand,
     IndexCommand,
     LsCommand,
+    TldrCommand,
+    WhyCommand,
 )
 from llm_box.config import get_config
 
@@ -455,6 +459,248 @@ def index(
                 if verbose and data.get("error_details"):
                     for file_path, error in data["error_details"][:5]:
                         console.print(f"    [dim]{file_path}: {error}[/dim]")
+        else:
+            err_console.print(f"[red]Error:[/red] {result.error}")
+            raise typer.Exit(1)
+
+    except typer.Exit:
+        raise
+    except Exception as e:
+        err_console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1) from None
+
+
+# -------------------------------------------------------------------------
+# TL;DR Command
+# -------------------------------------------------------------------------
+
+
+@app.command()
+def tldr(
+    file: str = typer.Argument(..., help="File to summarize."),
+    lines: int = typer.Option(5, "--lines", "-n", help="Number of summary lines."),
+    output_format: str = typer.Option(
+        "bullets", "--format", "-f", help="Output format: bullets, paragraph, oneline."
+    ),
+    provider: ProviderOption = None,
+    model: ModelOption = None,
+    no_cache: NoCacheOption = False,
+    verbose: VerboseOption = False,
+) -> None:
+    """Summarize a file (TL;DR)."""
+    try:
+        ctx = create_context(
+            provider=provider,
+            model=model,
+            no_cache=no_cache,
+            verbose=verbose,
+        )
+
+        cmd = TldrCommand()
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+            transient=True,
+        ) as progress:
+            progress.add_task(description="Summarizing...", total=None)
+            result = cmd.execute(
+                ctx,
+                file=file,
+                lines=lines,
+                format=output_format,
+            )
+
+        if result.success:
+            if result.cached:
+                console.print("[dim](from cache)[/dim]")
+            console.print(result.data)
+        else:
+            err_console.print(f"[red]Error:[/red] {result.error}")
+            raise typer.Exit(1)
+
+    except typer.Exit:
+        raise
+    except Exception as e:
+        err_console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1) from None
+
+
+# -------------------------------------------------------------------------
+# Why Command
+# -------------------------------------------------------------------------
+
+
+@app.command(name="why")
+def why_command(
+    path: str = typer.Argument(..., help="File or directory to explain."),
+    context: str | None = typer.Option(
+        None, "--context", "-c", help="Additional project context."
+    ),
+    deep: bool = typer.Option(False, "--deep", "-d", help="Include deeper analysis."),
+    provider: ProviderOption = None,
+    model: ModelOption = None,
+    no_cache: NoCacheOption = False,
+    verbose: VerboseOption = False,
+) -> None:
+    """Explain why a file or directory exists."""
+    try:
+        ctx = create_context(
+            provider=provider,
+            model=model,
+            no_cache=no_cache,
+            verbose=verbose,
+        )
+
+        cmd = WhyCommand()
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+            transient=True,
+        ) as progress:
+            progress.add_task(description="Analyzing purpose...", total=None)
+            result = cmd.execute(
+                ctx,
+                path=path,
+                context=context or "",
+                deep=deep,
+            )
+
+        if result.success:
+            if result.cached:
+                console.print("[dim](from cache)[/dim]")
+            console.print(result.data)
+        else:
+            err_console.print(f"[red]Error:[/red] {result.error}")
+            raise typer.Exit(1)
+
+    except typer.Exit:
+        raise
+    except Exception as e:
+        err_console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1) from None
+
+
+# -------------------------------------------------------------------------
+# Ask Command
+# -------------------------------------------------------------------------
+
+
+FilesOption = typer.Option(None, "--files", help="Multiple files for context (comma-separated).")
+
+
+@app.command()
+def ask(
+    question: str = typer.Argument(..., help="Question to ask."),
+    file: str | None = typer.Option(None, "--file", "-f", help="File to provide as context."),
+    files: str | None = FilesOption,
+    context: str | None = typer.Option(
+        None, "--context", "-c", help="Additional context string."
+    ),
+    provider: ProviderOption = None,
+    model: ModelOption = None,
+    no_cache: NoCacheOption = False,
+    verbose: VerboseOption = False,
+) -> None:
+    """Ask a question about files or code."""
+    try:
+        ctx = create_context(
+            provider=provider,
+            model=model,
+            no_cache=no_cache,
+            verbose=verbose,
+        )
+
+        cmd = AskCommand()
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+            transient=True,
+        ) as progress:
+            progress.add_task(description="Thinking...", total=None)
+            # Parse comma-separated files
+            files_list = []
+            if files:
+                files_list = [f.strip() for f in files.split(",") if f.strip()]
+
+            result = cmd.execute(
+                ctx,
+                question=question,
+                file=file,
+                files=files_list,
+                context=context or "",
+            )
+
+        if result.success:
+            if result.cached:
+                console.print("[dim](from cache)[/dim]")
+            console.print(result.data)
+        else:
+            err_console.print(f"[red]Error:[/red] {result.error}")
+            raise typer.Exit(1)
+
+    except typer.Exit:
+        raise
+    except Exception as e:
+        err_console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1) from None
+
+
+# -------------------------------------------------------------------------
+# Doc Command
+# -------------------------------------------------------------------------
+
+
+@app.command()
+def doc(
+    file: str = typer.Argument(..., help="File to document."),
+    style: str = typer.Option(
+        "docstring", "--style", "-s", help="Documentation style: docstring, readme, api."
+    ),
+    doc_format: str = typer.Option(
+        "markdown", "--format", "-f", help="Output format: markdown, rst, plain."
+    ),
+    no_examples: bool = typer.Option(False, "--no-examples", help="Skip usage examples."),
+    provider: ProviderOption = None,
+    model: ModelOption = None,
+    no_cache: NoCacheOption = False,
+    verbose: VerboseOption = False,
+) -> None:
+    """Generate documentation for a file."""
+    try:
+        ctx = create_context(
+            provider=provider,
+            model=model,
+            no_cache=no_cache,
+            verbose=verbose,
+        )
+
+        cmd = DocCommand()
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+            transient=True,
+        ) as progress:
+            progress.add_task(description="Generating documentation...", total=None)
+            result = cmd.execute(
+                ctx,
+                file=file,
+                style=style,
+                format=doc_format,
+                include_examples=not no_examples,
+            )
+
+        if result.success:
+            if result.cached:
+                console.print("[dim](from cache)[/dim]")
+            console.print(result.data)
         else:
             err_console.print(f"[red]Error:[/red] {result.error}")
             raise typer.Exit(1)

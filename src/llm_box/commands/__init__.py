@@ -27,13 +27,16 @@ Usage:
     result = cmd.execute(context, arg1="value")
 """
 
-from llm_box.commands.base import BaseCommand, CommandContext, CommandResult
-
 # Import commands to trigger registration
+from llm_box.commands.ask import AskCommand
+from llm_box.commands.base import BaseCommand, CommandContext, CommandResult
 from llm_box.commands.cat import CatCommand
+from llm_box.commands.doc import DocCommand
 from llm_box.commands.find import FindCommand, IndexCommand
 from llm_box.commands.ls import LsCommand
 from llm_box.commands.registry import CommandRegistry, command
+from llm_box.commands.tldr import TldrCommand
+from llm_box.commands.why import WhyCommand
 
 __all__ = [
     # Base classes
@@ -44,8 +47,12 @@ __all__ = [
     "CommandRegistry",
     "command",
     # Commands
+    "AskCommand",
     "CatCommand",
+    "DocCommand",
     "FindCommand",
     "IndexCommand",
     "LsCommand",
+    "TldrCommand",
+    "WhyCommand",
 ]
